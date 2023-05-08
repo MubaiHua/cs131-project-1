@@ -2,6 +2,8 @@ from intbase import InterpreterBase, ErrorType
 from copy import deepcopy
 class ObjectDefinition:
     NO_RETURN_VALUE = "N_R_V"
+    LOGIC_OPERATIONS = ["<", ">", "<=", ">=", "!=", "==", "&", "|"]
+    ARITHMATIC_OPERATIONS = ["+", "-", "*", "/", "%"]
 
     def __init__(self, interpreter_obj, methods, fields):
         self.fields = {}
@@ -45,7 +47,6 @@ class ObjectDefinition:
             for param_name, param_value in zip(method.get_parameters(), evaluated_args)
         }
 
-        # Execute the top-level statement
         statement = method.get_top_level_statement()
         result = self.execute_statement(statement, parameter_values)
         if result == self.NO_RETURN_VALUE:
@@ -60,16 +61,16 @@ class ObjectDefinition:
             result = self.execute_print(statement, parameter_values)
         elif self.is_set_statement(statement):
             result = self.execute_set_statement(statement, parameter_values)
-        elif self.is_input_statement(statement):
-            result = self.execute_input_statement(statement, parameter_values)
-        elif self.is_call_statement(statement):
-            result = self.execute_call_statement(statement, parameter_values)
         elif self.is_while_statement(statement):
             result = self.execute_while_statement(statement, parameter_values)
-        elif self.is_if_statement(statement):
-            result = self.execute_if_statement(statement, parameter_values)
+        elif self.is_input_statement(statement):
+            result = self.execute_input_statement(statement, parameter_values)
         elif self.is_return_statement(statement):
             result = self.execute_return_statement(statement, parameter_values)
+        elif self.is_call_statement(statement):
+            result = self.execute_call_statement(statement, parameter_values)
+        elif self.is_if_statement(statement):
+            result = self.execute_if_statement(statement, parameter_values)
         elif self.is_begin_statement(statement):
             result = self.execute_all_nested_statements(statement, parameter_values)
         else:
@@ -84,9 +85,9 @@ class ObjectDefinition:
         )
 
     def execute_print(self, statement, parameter_values):
-        keyword = statement[0]
+        print_flag = statement[0] == InterpreterBase.PRINT_DEF
         expression = statement[1:]
-        value = self.evaluate_expression(expression, parameter_values, keyword)
+        value = self.evaluate_expression(expression, parameter_values, print_flag)
         if isinstance(value, bool):
             value = InterpreterBase.TRUE_DEF if value == True else InterpreterBase.FALSE_DEF
         self.interpreter_obj.output(str(value))
@@ -102,12 +103,9 @@ class ObjectDefinition:
         if parameter_values is None:
             parameter_values = {}
 
-        variable_name = statement[1]
+        value = self.evaluate_expression(statement[2], parameter_values)
 
-        expression = statement[2]
-        value = self.evaluate_expression(expression, parameter_values)
-
-        self.set_variable_value(value, variable_name, parameter_values)
+        self.set_variable_value(value, statement[1], parameter_values)
 
     def is_input_statement(self, statement):
         return (
@@ -165,6 +163,27 @@ class ObjectDefinition:
             and len(statement) > 0
             and statement[0] == InterpreterBase.WHILE_DEF
         )
+    
+    def is_if_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.IF_DEF
+        )
+    
+    def is_return_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.RETURN_DEF
+        )
+    
+    def is_begin_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.BEGIN_DEF
+        )
 
     def execute_while_statement(self, statement, parameter_values):
         condition = statement[1]
@@ -182,13 +201,6 @@ class ObjectDefinition:
             result = self.execute_statement(body, parameter_values)
             if result is not None:
                 return result
-
-    def is_if_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) != 0
-            and statement[0] == InterpreterBase.IF_DEF
-        )
 
     def execute_if_statement(self, statement, parameter_values):
         if len(statement) < 3:  # verify the syntax of if statement
@@ -214,24 +226,10 @@ class ObjectDefinition:
         else:
             return
 
-    def is_return_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) > 0
-            and statement[0] == InterpreterBase.RETURN_DEF
-        )
-
     def execute_return_statement(self, statement, parameter_values):
         if len(statement) == 1:
             return self.NO_RETURN_VALUE
         return self.evaluate_expression(statement[1], parameter_values)
-
-    def is_begin_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) > 0
-            and statement[0] == InterpreterBase.BEGIN_DEF
-        )
 
     def execute_all_nested_statements(self, statements, parameter_values):
         if parameter_values is None:
@@ -242,7 +240,7 @@ class ObjectDefinition:
             if result is not None:
                 return result
 
-    def evaluate_expression(self, expression, parameter_values, keyword = None):
+    def evaluate_expression(self, expression, parameter_values, print_flag = False):
         if isinstance(expression, str):
             if expression.startswith('"') and expression.endswith('"'):  # String literal
                 return expression[1:-1]
@@ -284,7 +282,7 @@ class ObjectDefinition:
                 if statement_result != None:
                     return statement_result
 
-            if operator in ["+", "-", "*", "/", "%"]:
+            if operator in self.ARITHMATIC_OPERATIONS:
                 left_operand = self.evaluate_expression(operands[0], parameter_values)
                 right_operand = self.evaluate_expression(operands[1], parameter_values)
 
@@ -319,7 +317,7 @@ class ObjectDefinition:
                         f"Can't use operator {operator} with value {left_operand} and {right_operand}",
                     )
 
-            elif operator in ["<", ">", "<=", ">=", "!=", "==", "&", "|"]:
+            elif operator in self.LOGIC_OPERATIONS:
                 left_operand = self.evaluate_expression(operands[0], parameter_values)
                 right_operand = self.evaluate_expression(operands[1], parameter_values)
 
@@ -425,9 +423,9 @@ class ObjectDefinition:
                 if isinstance(operand, bool):
                     return True if operand == False else False
                 else:
-                    self.interpreter_obj.error(ErrorType.TYPE_ERROR)
+                    self.interpreter_obj.error(ErrorType.TYPE_ERROR, f"Can't use operator {operator} with value {left_operand} and {right_operand}")
 
-            elif keyword == InterpreterBase.PRINT_DEF:
+            elif print_flag == True:
                 string_value = ""
                 for val in expression:
                     if isinstance(val, list):
@@ -445,9 +443,11 @@ class ObjectDefinition:
                         string_value += val[1:-1]
                 return string_value
             else:
-                raise ValueError(f"Invalid expression: {expression}")
+                raise Exception(f"Invalid expression: {expression}")
+
         else:
-            raise ValueError(f"Invalid expression: {expression}")
+            raise Exception(f"Invalid expression: {expression}")
+
 
     def get_variable_value(self, variable_name, parameter_values):
         if variable_name in parameter_values:
