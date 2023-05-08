@@ -61,7 +61,7 @@ class ObjectDefinition:
         elif self.is_set_statement(statement):
             result = self.execute_set_statement(statement, parameter_values)
         elif self.is_input_statement(statement):
-            result = self.execute_input_statement(statement)
+            result = self.execute_input_statement(statement, parameter_values)
         elif self.is_call_statement(statement):
             result = self.execute_call_statement(statement, parameter_values)
         elif self.is_while_statement(statement):
@@ -119,9 +119,9 @@ class ObjectDefinition:
             )
         )
 
-    def execute_input_statement(self, statement):
+    def execute_input_statement(self, statement, parameter_values):
         input_value = self.interpreter_obj.get_input()
-        self.fields[statement[1]] = input_value
+        self.set_variable_value(input_value, statement[1], parameter_values)
 
     def is_call_statement(self, statement):
         return (
