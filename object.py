@@ -446,10 +446,10 @@ class ObjectDefinition:
                         string_value += val[1:-1]
                 return string_value
             else:
-                raise self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
+                raise Exception(f"Invalid expression: {expression}")
 
         else:
-            raise self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
+            raise Exception(f"Invalid expression: {expression}")
 
 
     def get_variable_value(self, variable_name, parameter_values):
