@@ -61,16 +61,16 @@ class ObjectDefinition:
             result = self.execute_print(statement, parameter_values)
         elif self.is_set_statement(statement):
             result = self.execute_set_statement(statement, parameter_values)
-        elif self.is_input_statement(statement):
-            result = self.execute_input_statement(statement, parameter_values)
-        elif self.is_call_statement(statement):
-            result = self.execute_call_statement(statement, parameter_values)
         elif self.is_while_statement(statement):
             result = self.execute_while_statement(statement, parameter_values)
-        elif self.is_if_statement(statement):
-            result = self.execute_if_statement(statement, parameter_values)
+        elif self.is_input_statement(statement):
+            result = self.execute_input_statement(statement, parameter_values)
         elif self.is_return_statement(statement):
             result = self.execute_return_statement(statement, parameter_values)
+        elif self.is_call_statement(statement):
+            result = self.execute_call_statement(statement, parameter_values)
+        elif self.is_if_statement(statement):
+            result = self.execute_if_statement(statement, parameter_values)
         elif self.is_begin_statement(statement):
             result = self.execute_all_nested_statements(statement, parameter_values)
         else:
@@ -103,12 +103,9 @@ class ObjectDefinition:
         if parameter_values is None:
             parameter_values = {}
 
-        variable_name = statement[1]
+        value = self.evaluate_expression(statement[2], parameter_values)
 
-        expression = statement[2]
-        value = self.evaluate_expression(expression, parameter_values)
-
-        self.set_variable_value(value, variable_name, parameter_values)
+        self.set_variable_value(value, statement[1], parameter_values)
 
     def is_input_statement(self, statement):
         return (

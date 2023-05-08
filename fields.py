@@ -13,6 +13,8 @@ class FieldDefinition:
             initial_value.startswith('"') and initial_value.endswith('"')
         ):
             self.initial_value = initial_value[1:-1]
+        else:
+            self.initial_value = initial_value
 
     def get_name(self):
         return self.name
