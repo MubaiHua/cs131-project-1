@@ -1,13 +1,12 @@
 from intbase import InterpreterBase, ErrorType
 from copy import deepcopy
-
-
 class ObjectDefinition:
     NO_RETURN_VALUE = "N_R_V"
 
     def __init__(self, interpreter_obj, methods, fields):
         self.fields = {}
         self.methods = {}
+
 
         for method in methods.values():
             self.methods[method.get_name()] = deepcopy(method)
@@ -88,6 +87,8 @@ class ObjectDefinition:
         keyword = statement[0]
         expression = statement[1:]
         value = self.evaluate_expression(expression, parameter_values, keyword)
+        if isinstance(value, bool):
+            value = InterpreterBase.TRUE_DEF if value == True else InterpreterBase.FALSE_DEF
         self.interpreter_obj.output(str(value))
 
     def is_set_statement(self, statement):
@@ -134,7 +135,7 @@ class ObjectDefinition:
         if isinstance(object_name, list):
             object_name = self.evaluate_expression(object_name, parameter_values)
 
-        function_name = statement[2]  # call me and call
+        function_name = statement[2] 
         args = statement[3:]
         evaluated_args = [
             self.evaluate_expression(arg, parameter_values) for arg in args
@@ -149,6 +150,14 @@ class ObjectDefinition:
                     ErrorType.FAULT_ERROR, f"{object_name} is a null object reference"
                 )
             return self.fields[object_name].call_method(function_name, evaluated_args)
+        elif object_name in parameter_values:
+            if parameter_values[object_name] is None:
+                self.interpreter_obj.error(
+                    ErrorType.FAULT_ERROR, f"{object_name} is a null object reference"
+                )
+            return parameter_values[object_name].call_method(function_name, evaluated_args)
+        else:
+            object_name.call_method(function_name, evaluated_args)
 
     def is_while_statement(self, statement):
         return (
@@ -233,7 +242,7 @@ class ObjectDefinition:
             if result is not None:
                 return result
 
-    def evaluate_expression(self, expression, parameter_values, keyword=None):
+    def evaluate_expression(self, expression, parameter_values, keyword = None):
         if isinstance(expression, str):
             if expression.startswith('"') and expression.endswith('"'):  # String literal
                 return expression[1:-1]
@@ -285,7 +294,7 @@ class ObjectDefinition:
                 if isinstance(right_operand, str) and right_operand.isdigit():
                     right_operand = int(right_operand)
 
-                if isinstance(left_operand, int) and isinstance(right_operand, int):
+                if type(left_operand) == int and type(right_operand) == int:
                     if operator == "+":
                         return left_operand + right_operand
                     elif operator == "-":
@@ -363,8 +372,44 @@ class ObjectDefinition:
                         )
                     return left_operand >= right_operand
                 elif operator == "!=":
+                    raise_error = False
+                    if isinstance(left_operand, (int, bool, str)):
+                        if not isinstance(right_operand, (int, bool, str)):
+                            raise_error = True
+                        if type(left_operand) != type(right_operand):
+                            raise_error = True
+                    
+                    if isinstance(right_operand, (int, bool, str)):
+                        if not isinstance(left_operand, (int, bool, str)):
+                            raise_error = True
+                        if type(left_operand) != type(right_operand):
+                            raise_error = True
+                    
+                    if raise_error:
+                        self.interpreter_obj.error(
+                            ErrorType.TYPE_ERROR,
+                            f"Can't use operator {operator} with value {left_operand} and {right_operand}",
+                        )
                     return left_operand != right_operand
                 elif operator == "==":
+                    raise_error = False
+                    if isinstance(left_operand, (int, bool, str)):
+                        if not isinstance(right_operand, (int, bool, str)):
+                            raise_error = True
+                        if type(left_operand) != type(right_operand):
+                            raise_error = True
+                    
+                    if isinstance(right_operand, (int, bool, str)):
+                        if not isinstance(left_operand, (int, bool, str)):
+                            raise_error = True
+                        if type(left_operand) != type(right_operand):
+                            raise_error = True
+                    
+                    if raise_error:
+                        self.interpreter_obj.error(
+                            ErrorType.TYPE_ERROR,
+                            f"Can't use operator {operator} with value {left_operand} and {right_operand}",
+                        )
                     return left_operand == right_operand
                 elif operator == "&":
                     if not isinstance(left_operand, bool) or not isinstance(right_operand, bool):
