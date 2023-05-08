@@ -392,9 +392,10 @@ class ObjectDefinition:
                         if statement_result != None:
                             string_value += str(statement_result)
                     elif not (val.startswith('"') and val.endswith('"')):
-                        string_value += str(
-                            self.evaluate_expression(val, parameter_values)
-                        )
+                        res = self.evaluate_expression(val, parameter_values)
+                        if isinstance(res, bool):
+                            res = InterpreterBase.TRUE_DEF if res else InterpreterBase.FALSE_DEF
+                        string_value += str(res)
                     else:
                         string_value += val[1:-1]
                 return string_value
