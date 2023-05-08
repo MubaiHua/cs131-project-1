@@ -83,44 +83,6 @@ class ObjectDefinition:
             and len(statement) != 0
             and statement[0] == InterpreterBase.PRINT_DEF
         )
-    
-    def is_set_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) != 0
-            and statement[0] == InterpreterBase.SET_DEF
-        )
-    
-    def is_call_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) != 0
-            and statement[0] == InterpreterBase.CALL_DEF
-        )
-    
-    def is_input_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) != 0
-            and (
-                statement[0] == InterpreterBase.INPUT_STRING_DEF
-                or statement[0] == InterpreterBase.INPUT_INT_DEF
-            )
-        )
-    
-    def is_while_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) > 0
-            and statement[0] == InterpreterBase.WHILE_DEF
-        )
-    
-    def is_return_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) > 0
-            and statement[0] == InterpreterBase.RETURN_DEF
-        )
 
     def execute_print(self, statement, parameter_values):
         print_flag = statement[0] == InterpreterBase.PRINT_DEF
@@ -130,18 +92,44 @@ class ObjectDefinition:
             value = InterpreterBase.TRUE_DEF if value == True else InterpreterBase.FALSE_DEF
         self.interpreter_obj.output(str(value))
 
+    def is_set_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.SET_DEF
+        )
 
     def execute_set_statement(self, statement, parameter_values=None):
         if parameter_values is None:
             parameter_values = {}
 
-        value = self.evaluate_expression(statement[2], parameter_values)
-        self.set_variable_value(value, statement[1], parameter_values)
+        variable_name = statement[1]
+
+        expression = statement[2]
+        value = self.evaluate_expression(expression, parameter_values)
+
+        self.set_variable_value(value, variable_name, parameter_values)
+
+    def is_input_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and (
+                statement[0] == InterpreterBase.INPUT_STRING_DEF
+                or statement[0] == InterpreterBase.INPUT_INT_DEF
+            )
+        )
 
     def execute_input_statement(self, statement, parameter_values):
         input_value = self.interpreter_obj.get_input()
         self.set_variable_value(input_value, statement[1], parameter_values)
 
+    def is_call_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.CALL_DEF
+        )
 
     def execute_call_statement(self, statement, parameter_values):
         object_name = statement[1]
@@ -172,11 +160,32 @@ class ObjectDefinition:
         else:
             object_name.call_method(function_name, evaluated_args)
 
+    def is_while_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.WHILE_DEF
+        )
+    
     def is_if_statement(self, statement):
         return (
             isinstance(statement, list)
             and len(statement) != 0
             and statement[0] == InterpreterBase.IF_DEF
+        )
+    
+    def is_return_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.RETURN_DEF
+        )
+    
+    def is_begin_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.BEGIN_DEF
         )
 
     def execute_while_statement(self, statement, parameter_values):
@@ -200,7 +209,8 @@ class ObjectDefinition:
         if len(statement) < 3:  # verify the syntax of if statement
             self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
 
-        result = self.evaluate_expression(statement[1], parameter_values)
+        condition = statement[1]
+        result = self.evaluate_expression(condition, parameter_values)
 
         if not isinstance(result, bool):
             self.interpreter_obj.error(
@@ -223,13 +233,6 @@ class ObjectDefinition:
         if len(statement) == 1:
             return self.NO_RETURN_VALUE
         return self.evaluate_expression(statement[1], parameter_values)
-
-    def is_begin_statement(self, statement):
-        return (
-            isinstance(statement, list)
-            and len(statement) > 0
-            and statement[0] == InterpreterBase.BEGIN_DEF
-        )
 
     def execute_all_nested_statements(self, statements, parameter_values):
         if parameter_values is None:
