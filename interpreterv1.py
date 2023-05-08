@@ -16,8 +16,8 @@ class Interpreter(InterpreterBase):
             return  # error with parsing
 
         self.add_classes(parsed_program)
-        class_def = self.classes[super().MAIN_CLASS_DEF]  # get the main class
-        main_obj = class_def.instantiate_object()
+        main_class = self.classes[super().MAIN_CLASS_DEF]  # get the main class
+        main_obj = main_class.instantiate_object()
         main_obj.call_method(super().MAIN_FUNC_DEF, [])
 
     def add_classes(self, parsed_program):
@@ -41,20 +41,20 @@ class Interpreter(InterpreterBase):
             super().error(ErrorType.SYNTAX_ERROR, "There must be an Main class")
 
 
-def read_txt_file(file_path):
-    """
-    Reads a text file and returns each line as a list of strings.
+# def read_txt_file(file_path):
+#     """
+#     Reads a text file and returns each line as a list of strings.
 
-    Parameters:
-        file_path (str): The path to the text file.
+#     Parameters:
+#         file_path (str): The path to the text file.
 
-    Returns:
-        list: A list of strings, where each string is a line from the text file.
-    """
-    with open(file_path, "r") as f:
-        lines = f.readlines()
-        lines = [line.strip() for line in lines]
-    return lines
+#     Returns:
+#         list: A list of strings, where each string is a line from the text file.
+#     """
+#     with open(file_path, "r") as f:
+#         lines = f.readlines()
+#         lines = [line.strip() for line in lines]
+#     return lines
 
 
 # # Testing the interpreter
