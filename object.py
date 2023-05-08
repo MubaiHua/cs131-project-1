@@ -1,15 +1,14 @@
 from intbase import InterpreterBase, ErrorType
 from copy import deepcopy
-
-
 class ObjectDefinition:
     NO_RETURN_VALUE = "N_R_V"
-    ARITHMETIC_OPERATOR = ["+", "-", "*", "/", "%"]
-    LOGIC_OPERATOR = ["<", ">", "<=", ">=", "!=", "==", "&", "|"]
+    LOGIC_OPERATIONS = ["<", ">", "<=", ">=", "!=", "==", "&", "|"]
+    ARITHMATIC_OPERATIONS = ["+", "-", "*", "/", "%"]
 
     def __init__(self, interpreter_obj, methods, fields):
         self.fields = {}
         self.methods = {}
+
 
         for method in methods.values():
             self.methods[method.get_name()] = deepcopy(method)
@@ -21,8 +20,8 @@ class ObjectDefinition:
     def create_object(self, class_name):
         if class_name not in self.interpreter_obj.get_classes():
             self.interpreter_obj.error(
-                ErrorType.TYPE_ERROR,
-                f"Class named {class_name} does not exist")
+                ErrorType.TYPE_ERROR, f"Class named {class_name} does not exist"
+            )
 
         class_def = self.interpreter_obj.get_classes()[class_name]
         obj = class_def.instantiate_object()
@@ -30,8 +29,9 @@ class ObjectDefinition:
 
     def call_method(self, method_name, evaluated_args):
         if method_name not in self.methods:
-            self.interpreter_obj.error(ErrorType.NAME_ERROR,
-                                       f"Method {method_name} does not exist")
+            self.interpreter_obj.error(
+                ErrorType.NAME_ERROR, f"Method {method_name} does not exist"
+            )
 
         method = self.methods[method_name]
 
@@ -42,131 +42,148 @@ class ObjectDefinition:
             )
 
         # Create a dictionary of param_name: param_value pair
-        method_params = {
+        parameter_values = {
             param_name: param_value
-            for param_name, param_value in zip(method.get_parameters(),
-                                               evaluated_args)
+            for param_name, param_value in zip(method.get_parameters(), evaluated_args)
         }
 
         statement = method.get_top_level_statement()
-        result = self.execute_statement(statement, method_params)
+        result = self.execute_statement(statement, parameter_values)
         if result == self.NO_RETURN_VALUE:
             return
         return result
 
-    def execute_statement(self, statement, method_params=None):
-        if method_params is None:
-            method_params = {}
+    def execute_statement(self, statement, parameter_values=None):
+        if parameter_values is None:
+            parameter_values = {}
 
         if self.is_print_statement(statement):
-            result = self.execute_print(statement, method_params)
-        elif self.is_input_statement(statement):
-            result = self.execute_input_statement(statement, method_params)
-        elif self.is_return_statement(statement):
-            result = self.execute_return_statement(statement, method_params)
+            result = self.execute_print(statement, parameter_values)
         elif self.is_set_statement(statement):
-            result = self.execute_set_statement(statement, method_params)
-        elif self.is_while_statement(statement):
-            result = self.execute_while_statement(statement, method_params)
+            result = self.execute_set_statement(statement, parameter_values)
         elif self.is_if_statement(statement):
-            result = self.execute_if_statement(statement, method_params)
+            result = self.execute_if_statement(statement, parameter_values)
+        elif self.is_return_statement(statement):
+            result = self.execute_return_statement(statement, parameter_values)
+        elif self.is_input_statement(statement):
+            result = self.execute_input_statement(statement, parameter_values)
         elif self.is_call_statement(statement):
-            result = self.execute_call_statement(statement, method_params)
+            result = self.execute_call_statement(statement, parameter_values)
+        elif self.is_while_statement(statement):
+            result = self.execute_while_statement(statement, parameter_values)
         elif self.is_begin_statement(statement):
-            result = self.execute_all_nested_statements(
-                statement, method_params)
+            result = self.execute_all_nested_statements(statement, parameter_values)
         else:
             result = None
         return result
 
-    def is_set_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) != 0
-                and statement[0] == InterpreterBase.SET_DEF)
-
     def is_print_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) != 0
-                and statement[0] == InterpreterBase.PRINT_DEF)
-
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.PRINT_DEF
+        )
+    
+    def is_set_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.SET_DEF
+        )
+    
+    def is_call_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.CALL_DEF
+        )
+    
     def is_input_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) != 0
-                and (statement[0] == InterpreterBase.INPUT_STRING_DEF
-                     or statement[0] == InterpreterBase.INPUT_INT_DEF))
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and (
+                statement[0] == InterpreterBase.INPUT_STRING_DEF
+                or statement[0] == InterpreterBase.INPUT_INT_DEF
+            )
+        )
+    
+    def is_while_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.WHILE_DEF
+        )
+    
+    def is_return_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.RETURN_DEF
+        )
 
-    def execute_print(self, statement, method_params):
+    def execute_print(self, statement, parameter_values):
         print_flag = statement[0] == InterpreterBase.PRINT_DEF
         expression = statement[1:]
-        value = self.evaluate_expression(expression, method_params, print_flag)
+        value = self.evaluate_expression(expression, parameter_values, print_flag)
         if isinstance(value, bool):
             value = InterpreterBase.TRUE_DEF if value == True else InterpreterBase.FALSE_DEF
         self.interpreter_obj.output(str(value))
 
-    def execute_set_statement(self, statement, method_params=None):
-        if method_params is None:
-            method_params = {}
 
-        variable_name = statement[1]
+    def execute_set_statement(self, statement, parameter_values=None):
+        if parameter_values is None:
+            parameter_values = {}
 
-        expression = statement[2]
-        value = self.evaluate_expression(expression, method_params)
+        value = self.evaluate_expression(statement[2], parameter_values)
+        self.set_variable_value(value, statement[1], parameter_values)
 
-        self.set_variable_value(value, variable_name, method_params)
-
-    def execute_input_statement(self, statement, method_params):
+    def execute_input_statement(self, statement, parameter_values):
         input_value = self.interpreter_obj.get_input()
-        self.set_variable_value(input_value, statement[1], method_params)
+        self.set_variable_value(input_value, statement[1], parameter_values)
 
-    def is_call_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) != 0
-                and statement[0] == InterpreterBase.CALL_DEF)
 
-    def execute_call_statement(self, statement, method_params):
+    def execute_call_statement(self, statement, parameter_values):
         object_name = statement[1]
         if isinstance(object_name, list):
-            object_name = self.evaluate_expression(object_name, method_params)
+            object_name = self.evaluate_expression(object_name, parameter_values)
 
-        function_name = statement[2]
+        function_name = statement[2] 
         args = statement[3:]
-        evaluated_args = []
+        evaluated_args = [
+            self.evaluate_expression(arg, parameter_values) for arg in args
+        ]
 
-        for arg in args:
-            evaluated_args.append(self.evaluate_expression(arg, method_params))
-
+        # Calling the method with the evaluated arguments
         if object_name == InterpreterBase.ME_DEF:
             return self.call_method(function_name, evaluated_args)
-        elif object_name in method_params:
-            if method_params[object_name] is None:
-                self.interpreter_obj.error(
-                    ErrorType.FAULT_ERROR,
-                    f"{object_name} is a null object reference")
-            return method_params[object_name].call_method(
-                function_name, evaluated_args)
         elif object_name in self.fields:
             if self.fields[object_name] is None:
                 self.interpreter_obj.error(
-                    ErrorType.FAULT_ERROR,
-                    f"{object_name} is a null object reference")
-            return self.fields[object_name].call_method(
-                function_name, evaluated_args)
+                    ErrorType.FAULT_ERROR, f"{object_name} is a null object reference"
+                )
+            return self.fields[object_name].call_method(function_name, evaluated_args)
+        elif object_name in parameter_values:
+            if parameter_values[object_name] is None:
+                self.interpreter_obj.error(
+                    ErrorType.FAULT_ERROR, f"{object_name} is a null object reference"
+                )
+            return parameter_values[object_name].call_method(function_name, evaluated_args)
         else:
             object_name.call_method(function_name, evaluated_args)
 
-    def is_while_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) > 0
-                and statement[0] == InterpreterBase.WHILE_DEF)
-    
     def is_if_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) != 0
-                and statement[0] == InterpreterBase.IF_DEF)
-    
-    def is_begin_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) > 0
-                and statement[0] == InterpreterBase.BEGIN_DEF)
+        return (
+            isinstance(statement, list)
+            and len(statement) != 0
+            and statement[0] == InterpreterBase.IF_DEF
+        )
 
-    def execute_while_statement(self, statement, method_params):
+    def execute_while_statement(self, statement, parameter_values):
         condition = statement[1]
         body = statement[2]
 
-        result = self.evaluate_expression(condition, method_params)
+        result = self.evaluate_expression(condition, parameter_values)
 
         if not isinstance(result, bool):
             self.interpreter_obj.error(
@@ -174,16 +191,16 @@ class ObjectDefinition:
                 f"The condition in the while statement must be a boolean",
             )
 
-        while self.evaluate_expression(condition, method_params):
-            result = self.execute_statement(body, method_params)
+        while self.evaluate_expression(condition, parameter_values):
+            result = self.execute_statement(body, parameter_values)
             if result is not None:
                 return result
 
-    def execute_if_statement(self, statement, method_params):
-        if len(statement) < 3:
+    def execute_if_statement(self, statement, parameter_values):
+        if len(statement) < 3:  # verify the syntax of if statement
             self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
 
-        result = self.evaluate_expression( statement[1], method_params)
+        result = self.evaluate_expression(statement[1], parameter_values)
 
         if not isinstance(result, bool):
             self.interpreter_obj.error(
@@ -193,49 +210,52 @@ class ObjectDefinition:
 
         if result == True:
             return self.execute_statement(
-                statement[2], method_params)  # execute true statements
+                statement[2], parameter_values
+            )  # execute true statements
         elif len(statement) > 3:
             return self.execute_statement(
-                statement[3],
-                method_params)  # execute false statements if exists
+                statement[3], parameter_values
+            )  # execute false statements if exists
         else:
             return
 
-    def is_return_statement(self, statement):
-        return (isinstance(statement, list) and len(statement) > 0
-                and statement[0] == InterpreterBase.RETURN_DEF)
-
-    def execute_return_statement(self, statement, method_params):
+    def execute_return_statement(self, statement, parameter_values):
         if len(statement) == 1:
             return self.NO_RETURN_VALUE
-        return self.evaluate_expression(statement[1], method_params)
+        return self.evaluate_expression(statement[1], parameter_values)
 
-    def execute_all_nested_statements(self, statements, method_params):
-        if method_params is None:
-            method_params = {}
+    def is_begin_statement(self, statement):
+        return (
+            isinstance(statement, list)
+            and len(statement) > 0
+            and statement[0] == InterpreterBase.BEGIN_DEF
+        )
 
-        for statement in statements[1:]: #go through all nested statements
-            result = self.execute_statement(statement, method_params)
+    def execute_all_nested_statements(self, statements, parameter_values):
+        if parameter_values is None:
+            parameter_values = {}
+
+        for statement in statements[1:]:
+            result = self.execute_statement(statement, parameter_values)
             if result is not None:
                 return result
 
-    def evaluate_expression(self, expression, method_params, print_flag= False):
+    def evaluate_expression(self, expression, parameter_values, print_flag = False):
         if isinstance(expression, str):
-            if expression.startswith('"') and expression.endswith(
-                    '"'):  #string
+            if expression.startswith('"') and expression.endswith('"'):  # String literal
                 return expression[1:-1]
-            elif expression.isdigit():  #int
+            elif expression.isdigit():  # Integer literal
                 return int(expression)
-            elif isinstance(expression, bool): #handle existing bool
+            elif isinstance(expression, bool):
                 return expression
-            elif expression == InterpreterBase.NULL_DEF: #null
+            elif expression == InterpreterBase.NULL_DEF:
                 return None
-            elif expression == InterpreterBase.TRUE_DEF:  # Boolean true
+            elif expression == InterpreterBase.TRUE_DEF:  # Boolean true literal
                 return True
-            elif expression == InterpreterBase.FALSE_DEF:  # Boolean false
+            elif expression == InterpreterBase.FALSE_DEF:  # Boolean false literal
                 return False
-            else:  # variable
-                return self.get_variable_value(expression, method_params)
+            else:  # Assume the expression is a variable name
+                return self.get_variable_value(expression, parameter_values)
 
         elif isinstance(expression, list):
             operator = expression[0]
@@ -245,28 +265,26 @@ class ObjectDefinition:
                 class_name = expression[1]
                 if class_name not in self.interpreter_obj.classes:
                     self.interpreter_obj.error(
-                        ErrorType.TYPE_ERROR,
-                        f"class {class_name} does not exist")
+                        ErrorType.TYPE_ERROR, f"class {class_name} does not exist"
+                    )
                 new_object = self.create_object(class_name)
                 return new_object
 
             if isinstance(expression, list):
-                statement_result = self.execute_statement(
-                    expression, method_params)
+                statement_result = self.execute_statement(expression, parameter_values)
                 if statement_result != None:
                     return statement_result
 
             if isinstance(expression[0], list):
                 statement_result = self.evaluate_expression(
-                    expression[0], method_params)
+                    expression[0], parameter_values
+                )
                 if statement_result != None:
                     return statement_result
 
-            if operator in self.ARITHMETIC_OPERATOR:
-                left_operand = self.evaluate_expression(
-                    operands[0], method_params)
-                right_operand = self.evaluate_expression(
-                    operands[1], method_params)
+            if operator in self.ARITHMATIC_OPERATIONS:
+                left_operand = self.evaluate_expression(operands[0], parameter_values)
+                right_operand = self.evaluate_expression(operands[1], parameter_values)
 
                 if isinstance(left_operand, str) and left_operand.isdigit():
                     left_operand = int(left_operand)
@@ -285,10 +303,7 @@ class ObjectDefinition:
                         return left_operand // right_operand
                     elif operator == "%":
                         return left_operand % right_operand
-                    
-                    # handle string concat
-                elif isinstance(left_operand, str) and isinstance(
-                        right_operand, str):
+                elif isinstance(left_operand, str) and isinstance(right_operand, str):
                     if operator == "+":
                         return left_operand + right_operand
                     else:
@@ -302,11 +317,9 @@ class ObjectDefinition:
                         f"Can't use operator {operator} with value {left_operand} and {right_operand}",
                     )
 
-            elif operator in self.LOGIC_OPERATOR:
-                left_operand = self.evaluate_expression(
-                    operands[0], method_params)
-                right_operand = self.evaluate_expression(
-                    operands[1], method_params)
+            elif operator in self.LOGIC_OPERATIONS:
+                left_operand = self.evaluate_expression(operands[0], parameter_values)
+                right_operand = self.evaluate_expression(operands[1], parameter_values)
 
                 if isinstance(left_operand, str) and left_operand.isdigit():
                     left_operand = int(left_operand)
@@ -314,8 +327,7 @@ class ObjectDefinition:
                 if isinstance(right_operand, str) and right_operand.isdigit():
                     right_operand = int(right_operand)
 
-                if isinstance(left_operand,
-                              int) != isinstance(right_operand, int):
+                if isinstance(left_operand, int) != isinstance(right_operand, int):
                     self.interpreter_obj.error(
                         ErrorType.TYPE_ERROR,
                         f"Can't use operator {operator} with value {left_operand} and {right_operand}",
@@ -323,7 +335,8 @@ class ObjectDefinition:
 
                 if operator == "<":
                     if isinstance(left_operand, bool) or isinstance(
-                            right_operand, bool):
+                        right_operand, bool
+                    ):
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
                             f"Can't use operator {operator} with value {left_operand} and {right_operand}",
@@ -331,7 +344,8 @@ class ObjectDefinition:
                     return left_operand < right_operand
                 elif operator == ">":
                     if isinstance(left_operand, bool) or isinstance(
-                            right_operand, bool):
+                        right_operand, bool
+                    ):
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
                             f"Can't use operator {operator} with value {left_operand} and {right_operand}",
@@ -339,7 +353,8 @@ class ObjectDefinition:
                     return left_operand > right_operand
                 elif operator == "<=":
                     if isinstance(left_operand, bool) or isinstance(
-                            right_operand, bool):
+                        right_operand, bool
+                    ):
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
                             f"Can't use operator {operator} with value {left_operand} and {right_operand}",
@@ -347,7 +362,8 @@ class ObjectDefinition:
                     return left_operand <= right_operand
                 elif operator == ">=":
                     if isinstance(left_operand, bool) or isinstance(
-                            right_operand, bool):
+                        right_operand, bool
+                    ):
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
                             f"Can't use operator {operator} with value {left_operand} and {right_operand}",
@@ -360,13 +376,13 @@ class ObjectDefinition:
                             raise_error = True
                         if type(left_operand) != type(right_operand):
                             raise_error = True
-
+                    
                     if isinstance(right_operand, (int, bool, str)):
                         if not isinstance(left_operand, (int, bool, str)):
                             raise_error = True
                         if type(left_operand) != type(right_operand):
                             raise_error = True
-
+                    
                     if raise_error:
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
@@ -380,13 +396,13 @@ class ObjectDefinition:
                             raise_error = True
                         if type(left_operand) != type(right_operand):
                             raise_error = True
-
+                    
                     if isinstance(right_operand, (int, bool, str)):
                         if not isinstance(left_operand, (int, bool, str)):
                             raise_error = True
                         if type(left_operand) != type(right_operand):
                             raise_error = True
-
+                    
                     if raise_error:
                         self.interpreter_obj.error(
                             ErrorType.TYPE_ERROR,
@@ -394,39 +410,32 @@ class ObjectDefinition:
                         )
                     return left_operand == right_operand
                 elif operator == "&":
-                    if not isinstance(left_operand, bool) or not isinstance(
-                            right_operand, bool):
-                        self.interpreter_obj.error(
-                            ErrorType.TYPE_ERROR,
-                            f"Can't use operator {operator} with value {left_operand} and {right_operand}"
-                        )
+                    if not isinstance(left_operand, bool) or not isinstance(right_operand, bool):
+                        self.interpreter_obj.error(ErrorType.TYPE_ERROR, f"Can't use operator {operator} with value {left_operand} and {right_operand}")
                     return left_operand & right_operand
                 elif operator == "|":
-                    if not isinstance(left_operand, bool) or not isinstance(
-                            right_operand, bool):
-                        self.interpreter_obj.error(
-                            ErrorType.TYPE_ERROR,
-                            f"Can't use operator {operator} with value {left_operand} and {right_operand}"
-                        )
+                    if not isinstance(left_operand, bool) or not isinstance(right_operand, bool):
+                        self.interpreter_obj.error(ErrorType.TYPE_ERROR, f"Can't use operator {operator} with value {left_operand} and {right_operand}")
                     return left_operand | right_operand
 
             elif operator == "!":
-                operand = self.evaluate_expression(operands[0], method_params)
+                operand = self.evaluate_expression(operands[0], parameter_values)
                 if isinstance(operand, bool):
                     return True if operand == False else False
                 else:
                     self.interpreter_obj.error(ErrorType.TYPE_ERROR, f"Can't use operator {operator} with value {left_operand} and {right_operand}")
 
-            elif print_flag:
+            elif print_flag == True:
                 string_value = ""
                 for val in expression:
                     if isinstance(val, list):
                         statement_result = self.evaluate_expression(
-                            val, method_params)
-                        if statement_result is not None:
+                            val, parameter_values
+                        )
+                        if statement_result != None:
                             string_value += str(statement_result)
                     elif not (val.startswith('"') and val.endswith('"')):
-                        res = self.evaluate_expression(val, method_params)
+                        res = self.evaluate_expression(val, parameter_values)
                         if isinstance(res, bool):
                             res = InterpreterBase.TRUE_DEF if res else InterpreterBase.FALSE_DEF
                         string_value += str(res)
@@ -435,23 +444,24 @@ class ObjectDefinition:
                 return string_value
             else:
                 raise self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
+
         else:
             raise self.interpreter_obj.error(ErrorType.SYNTAX_ERROR)
 
-    def get_variable_value(self, variable_name, method_params):
-        if variable_name in method_params:
-            return method_params[variable_name]
+
+    def get_variable_value(self, variable_name, parameter_values):
+        if variable_name in parameter_values:
+            return parameter_values[variable_name]
         elif variable_name in self.fields:
             return self.fields[variable_name]
         else:
             self.interpreter_obj.error(ErrorType.NAME_ERROR)
 
-    def set_variable_value(self, value, variable_name, method_params):
-        # check paramteres before fields
-        if variable_name not in method_params and variable_name not in self.fields:
+    def set_variable_value(self, value, variable_name, parameter_values):
+        if variable_name not in parameter_values and variable_name not in self.fields:
             self.interpreter_obj.error(ErrorType.NAME_ERROR)
 
-        if variable_name in method_params:
-            method_params[variable_name] = value
+        if variable_name in parameter_values:
+            parameter_values[variable_name] = value
         else:
             self.fields[variable_name] = value
