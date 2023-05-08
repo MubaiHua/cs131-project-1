@@ -235,12 +235,12 @@ class ObjectDefinition:
 
     def evaluate_expression(self, expression, parameter_values, keyword=None):
         if isinstance(expression, str):
-            if expression.startswith('"') and expression.endswith(
-                '"'
-            ):  # String literal
+            if expression.startswith('"') and expression.endswith('"'):  # String literal
                 return expression[1:-1]
             elif expression.isdigit():  # Integer literal
                 return int(expression)
+            elif isinstance(expression, bool):
+                return expression
             elif expression == InterpreterBase.NULL_DEF:
                 return None
             elif expression == InterpreterBase.TRUE_DEF:  # Boolean true literal
